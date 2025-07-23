@@ -29,7 +29,7 @@ class BatchAddDatesDialog(QDialog):
 
         layout.addWidget(QLabel("交易日数量:"), 1, 0)
         self.days_count_edit = QLineEdit()
-        self.days_count_edit.setText("20")  # 默认数量改为20
+        self.days_count_edit.setText("20")  
         layout.addWidget(self.days_count_edit, 1, 1)
 
         layout.addWidget(QLabel("跳过周末:"), 2, 0)
@@ -69,7 +69,7 @@ class DataRefreshThread(QThread):
         self.parent = parent
         self.option_name = option_name
         self.query_date = query_date
-        self.keyword = keyword  # 新增：用于筛选需要刷新的数据
+        self.keyword = keyword  # 用于筛选需要刷新的数据
         self.na_dates = na_dates if na_dates is not None else {}  # 格式: {期权名称: [日期列表]}
         self.total_tasks = 0
         self.completed_tasks = 0
@@ -698,12 +698,11 @@ class OptionPositionCalculator(QMainWindow):
         tab.setLayout(layout)
 
     def adjust_table_column_widths(self, table):
-        """调整表格列宽：加宽期权名称列（索引1），其余列均分"""
+        """加宽期权名称列（索引1），其余列均分"""
         # 设置所有列默认模式为Stretch
         for col in range(table.columnCount()):
             table.horizontalHeader().setSectionResizeMode(col, QHeaderView.Stretch)
 
-        # 单独设置期权名称列（索引1）为更宽的固定宽度，或使用Interactive模式允许用户调整
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
         # 设置初始宽度为其他列的1.8倍
         table.setColumnWidth(1, 270)
