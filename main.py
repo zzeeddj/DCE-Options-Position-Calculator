@@ -29,7 +29,7 @@ class BatchAddDatesDialog(QDialog):
 
         layout.addWidget(QLabel("交易日数量:"), 1, 0)
         self.days_count_edit = QLineEdit()
-        self.days_count_edit.setText("20")  
+        self.days_count_edit.setText("20")
         layout.addWidget(self.days_count_edit, 1, 1)
 
         layout.addWidget(QLabel("跳过周末:"), 2, 0)
@@ -255,7 +255,10 @@ class QueryThread(QThread):
 
                 na_dates[name] = []
                 for date in option["trade_dates"]:
-                    if date < self.query_date and option["close_prices"].get(date) == "N/A":
+                    # 修改处1：原代码是检查所有查询日期前的N/A数据
+                    # 原代码：if date < self.query_date and option["close_prices"].get(date) == "N/A":
+                    # 修改为：只检查查询日期当天的N/A数据（如果是查询当天）和查询日期前的N/A数据
+                    if (date == self.query_date or date < self.query_date) and option["close_prices"].get(date) == "N/A":
                         na_dates[name].append(date)
 
                 # 如果没有需要重新获取的日期，移除该期权
@@ -287,13 +290,27 @@ class QueryThread(QThread):
                             self.progress_updated.emit(progress_percent,
                                                        f"正在获取 {option['name']} 在 {date} 的数据... ({progress_percent}%)")
 
-                            self.parent.refresh_option_data(option, date)
-                            completed_na_tasks += 1
+                            # 修改处2：原代码无条件刷新N/A数据
+                            # 修改为：如果是查询日期当天且是N/A，尝试刷新但不报错；查询日期前仍报错
+                            if date == self.query_date:
+                                # 查询日期当天，尝试刷新但不报错
+                                self.parent.refresh_option_data(option, date)
+                                if option["close_prices"].get(date) == "N/A":
+                                    # 当天数据仍为N/A，不报错
+                                    pass
+                            else:
+                                # 查询日期前，保持原逻辑
+                                self.parent.refresh_option_data(option, date)
+                                if option["close_prices"].get(date) == "N/A":
+                                    if name not in self.error_messages:
+                                        self.error_messages[name] = []
+                                    self.error_messages[name].append(date)
 
-                            if option["close_prices"].get(date) == "N/A":
-                                if name not in self.error_messages:
-                                    self.error_messages[name] = []
-                                self.error_messages[name].append(date)
+                            completed_na_tasks += 1
+                            self.progress_updated.emit(
+                                int(completed_na_tasks / total_na_tasks * 100) if total_na_tasks > 0 else 100,
+                                f"已处理 {option['name']} 在 {date} 的数据"
+                            )
 
             # 第三阶段：计算并准备查询结果
             if not self.is_canceled and na_refresh_success:
